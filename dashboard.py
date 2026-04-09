@@ -273,6 +273,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; font-family: 'Inconsolata', monospace; }
   .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; overflow-x: auto; }
 
+  /* Tooltips */
+  .tip { position: relative; cursor: help; }
+  .tip::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: #1e1e2e; color: #F5F5F0; font-size: 12px; font-weight: 400; font-family: 'Funnel Sans', sans-serif;
+    line-height: 1.5; padding: 8px 12px; border-radius: 6px; border: 1px solid #2a2d3a;
+    white-space: normal; width: max-content; max-width: 260px;
+    pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100;
+    text-transform: none; letter-spacing: 0;
+  }
+  .tip:hover::after { opacity: 1; }
+  .tip-right::after { left: 0; transform: none; }
+  .tip-left::after { left: auto; right: 0; transform: none; }
+
+  /* Info icon next to labels */
+  .info-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--muted); color: var(--muted); font-size: 9px; font-weight: 700; text-align: center; line-height: 13px; margin-left: 4px; vertical-align: middle; font-family: 'Inconsolata', monospace; font-style: normal; cursor: help; }
+
   footer { border-top: 1px solid var(--border); padding: 20px 24px; margin-top: 8px; }
   .footer-content { max-width: 1400px; margin: 0 auto; }
   .footer-content p { color: var(--muted); font-size: 12px; line-height: 1.7; margin-bottom: 4px; }
@@ -305,12 +323,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </header>
 
 <div id="filter-bar">
-  <div class="filter-label">Models</div>
+  <div class="filter-label tip tip-right" data-tip="Filter data by Claude model. Toggle models on/off to compare costs across tiers.">Models<i class="info-dot">?</i></div>
   <div id="model-checkboxes"></div>
   <button class="filter-btn" onclick="selectAllModels()">All</button>
   <button class="filter-btn" onclick="clearAllModels()">None</button>
   <div class="filter-sep"></div>
-  <div class="filter-label">Range</div>
+  <div class="filter-label tip" data-tip="Show data from the last 7, 30, or 90 days — or everything.">Range<i class="info-dot">?</i></div>
   <div class="range-group">
     <button class="range-btn" data-range="7d"  onclick="setRange('7d')">7d</button>
     <button class="range-btn" data-range="30d" onclick="setRange('30d')">30d</button>
@@ -318,13 +336,28 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <button class="range-btn" data-range="all" onclick="setRange('all')">All</button>
   </div>
   <div class="filter-sep"></div>
-  <div class="clude-toggle" onclick="toggleClude()">
+  <div class="clude-toggle tip" data-tip="Toggle on to see how much Clude's memory layer saves compared to regular Claude Code sessions." onclick="toggleClude()">
     <div class="clude-toggle-label" id="clude-toggle-label">Clude Savings</div>
     <div class="toggle-track" id="clude-toggle-track"><div class="toggle-thumb"></div></div>
   </div>
 </div>
 
 <div class="container">
+  <!-- Clude CTA -->
+  <div style="background:var(--clude-bg);border:1px solid rgba(34,68,255,0.2);border-radius:10px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--accent);margin-bottom:4px">Start saving with Clude</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6">
+        Give your AI agents memory. Fewer turns, less repeated context, lower cost.
+        <span style="font-family:'Inconsolata',monospace;color:var(--text);font-size:12px;background:rgba(0,0,0,0.3);padding:3px 8px;border-radius:4px;display:inline-block;margin-left:6px">npm install -g clude-bot && clude-bot setup</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="https://clude.io/chat" target="_blank" style="padding:8px 18px;border-radius:6px;background:var(--accent);color:white;text-decoration:none;font-size:13px;font-weight:600;font-family:'Inconsolata',monospace;white-space:nowrap">Try Clude Chat</a>
+      <a href="https://github.com/sebbsssss/cludebot" target="_blank" style="padding:8px 18px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);text-decoration:none;font-size:13px;font-weight:600;font-family:'Inconsolata',monospace;white-space:nowrap">GitHub</a>
+    </div>
+  </div>
+
   <!-- Savings Hero (hidden until toggle) -->
   <div class="savings-hero clude-section" id="savings-hero">
     <div class="savings-hero-top">
@@ -384,11 +417,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="stats-row" id="stats-row"></div>
   <div class="charts-grid">
     <div class="chart-card wide">
-      <h2 id="daily-chart-title">Daily Token Usage</h2>
+      <h2 id="daily-chart-title" class="tip tip-right" data-tip="Your token usage per day, stacked by type. Tall bars mean heavy usage days. Look for spikes to find unexpected costs.">Daily Token Usage<i class="info-dot">?</i></h2>
       <div class="chart-wrap tall"><canvas id="chart-daily"></canvas></div>
     </div>
     <div class="chart-card">
-      <h2>By Model</h2>
+      <h2 class="tip tip-right" data-tip="Which Claude models you use most. Opus is the smartest but most expensive. Haiku is cheapest. Sonnet is in between.">By Model<i class="info-dot">?</i></h2>
       <div class="chart-wrap"><canvas id="chart-model"></canvas></div>
     </div>
     <div class="chart-card clude-section" id="chart-comparison-card">
@@ -396,7 +429,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="chart-wrap"><canvas id="chart-comparison"></canvas></div>
     </div>
     <div class="chart-card">
-      <h2>Top Projects by Tokens</h2>
+      <h2 class="tip tip-right" data-tip="Which codebases are consuming the most tokens. Useful for finding projects that might need optimization.">Top Projects by Tokens<i class="info-dot">?</i></h2>
       <div class="chart-wrap"><canvas id="chart-project"></canvas></div>
     </div>
     <div class="chart-card clude-section" id="chart-distribution-card">
@@ -405,21 +438,34 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
   <div class="table-card">
-    <div class="section-title">Recent Sessions</div>
+    <div class="section-title tip tip-right" data-tip="Your last 20 sessions. Each row is one Claude Code conversation. Look for sessions with lots of turns or high cost to understand your usage.">Recent Sessions<i class="info-dot">?</i></div>
     <table>
       <thead><tr>
-        <th>Session</th><th>Project</th><th>Last Active</th><th>Duration</th>
-        <th>Model</th><th class="mode-col" style="display:none">Mode</th><th>Turns</th><th>Input</th><th>Output</th><th>Est. Cost</th>
+        <th class="tip tip-right" data-tip="Short ID for this conversation">Session</th>
+        <th class="tip tip-right" data-tip="The folder/project you were working in">Project</th>
+        <th>Last Active</th>
+        <th class="tip" data-tip="How long the session lasted from first to last message">Duration</th>
+        <th class="tip" data-tip="Which Claude model was used — Opus ($$$), Sonnet ($$), or Haiku ($)">Model</th>
+        <th class="mode-col tip" style="display:none" data-tip="Whether Clude memory was active during this session">Mode</th>
+        <th class="tip" data-tip="Number of back-and-forth exchanges in this session">Turns</th>
+        <th class="tip" data-tip="Tokens sent to Claude — your prompts, files, context">Input</th>
+        <th class="tip" data-tip="Tokens Claude generated — code, explanations, tool calls">Output</th>
+        <th class="tip tip-left" data-tip="Estimated cost at API rates. Subscriptions (Pro/Max) are much cheaper.">Est. Cost</th>
       </tr></thead>
       <tbody id="sessions-body"></tbody>
     </table>
   </div>
   <div class="table-card">
-    <div class="section-title">Cost by Model</div>
+    <div class="section-title tip tip-right" data-tip="Total cost broken down by Claude model. Opus is most capable but 5x more expensive than Haiku.">Cost by Model<i class="info-dot">?</i></div>
     <table>
       <thead><tr>
-        <th>Model</th><th>Turns</th><th>Input</th><th>Output</th>
-        <th>Cache Read</th><th>Cache Creation</th><th>Est. Cost</th>
+        <th>Model</th>
+        <th class="tip tip-right" data-tip="Total back-and-forth exchanges">Turns</th>
+        <th class="tip" data-tip="Tokens you sent to Claude">Input</th>
+        <th class="tip" data-tip="Tokens Claude generated">Output</th>
+        <th class="tip" data-tip="Cached context re-read each turn — cheap but high volume">Cache Read</th>
+        <th class="tip" data-tip="New context written to cache — slightly more expensive than input">Cache Creation</th>
+        <th class="tip tip-left" data-tip="Total cost at API rates for this model">Est. Cost</th>
       </tr></thead>
       <tbody id="model-cost-body"></tbody>
     </table>
@@ -432,7 +478,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <p>
       Built by <strong>Seb</strong>
       &nbsp;&middot;&nbsp;
-      Powered by <a href="https://github.com/sebbsssss/cludebot" target="_blank">Clude</a>
+      <a href="https://clude.io/chat" target="_blank">Clude Chat</a>
+      &nbsp;&middot;&nbsp;
+      <a href="https://github.com/sebbsssss/cludebot" target="_blank">GitHub</a>
       &nbsp;&middot;&nbsp;
       License: MIT
     </p>
@@ -782,17 +830,24 @@ function renderComparisonBanner(native, clude) {
 function renderStats(t) {
   const rangeLabel = RANGE_LABELS[selectedRange].toLowerCase();
   const stats = [
-    { label: 'Sessions',       value: t.sessions.toLocaleString(), sub: rangeLabel },
-    { label: 'Turns',          value: fmt(t.turns),                sub: rangeLabel },
-    { label: 'Input Tokens',   value: fmt(t.input),                sub: rangeLabel },
-    { label: 'Output Tokens',  value: fmt(t.output),               sub: rangeLabel },
-    { label: 'Cache Read',     value: fmt(t.cache_read),           sub: 'from prompt cache' },
-    { label: 'Cache Creation', value: fmt(t.cache_creation),       sub: 'writes to prompt cache' },
-    { label: 'Est. Cost',      value: fmtCostBig(t.cost),          sub: 'API pricing, Apr 2026', color: '#4ade80' },
+    { label: 'Sessions',       value: t.sessions.toLocaleString(), sub: rangeLabel,
+      tip: 'Each time you start a Claude Code conversation, that\'s one session.' },
+    { label: 'Turns',          value: fmt(t.turns),                sub: rangeLabel,
+      tip: 'A turn is one back-and-forth: you ask something, Claude responds. More turns = longer sessions.' },
+    { label: 'Input Tokens',   value: fmt(t.input),                sub: rangeLabel,
+      tip: 'Tokens sent TO Claude — your messages, file contents, and tool results. This is what you\'re asking it to read.' },
+    { label: 'Output Tokens',  value: fmt(t.output),               sub: rangeLabel,
+      tip: 'Tokens Claude generates — code, explanations, tool calls. This is the most expensive token type.' },
+    { label: 'Cache Read',     value: fmt(t.cache_read),           sub: 'from prompt cache',
+      tip: 'Context re-read from cache each turn — your conversation history, files, etc. Cheap per-token (90% discount) but adds up fast. This is the "context tax."' },
+    { label: 'Cache Creation', value: fmt(t.cache_creation),       sub: 'writes to prompt cache',
+      tip: 'New context written to cache — happens when your conversation grows or new files are read. Costs 25% more than regular input.' },
+    { label: 'Est. Cost',      value: fmtCostBig(t.cost),          sub: 'API pricing, Apr 2026', color: '#4ade80',
+      tip: 'What this would cost at Anthropic API rates. If you\'re on a Pro/Max subscription, your actual cost is much lower.' },
   ];
   document.getElementById('stats-row').innerHTML = stats.map(s => `
-    <div class="stat-card">
-      <div class="label">${s.label}</div>
+    <div class="stat-card tip" data-tip="${esc(s.tip)}">
+      <div class="label">${s.label}<i class="info-dot">?</i></div>
       <div class="value" style="${s.color ? 'color:' + s.color : ''}">${esc(s.value)}</div>
       ${s.sub ? `<div class="sub">${esc(s.sub)}</div>` : ''}
     </div>

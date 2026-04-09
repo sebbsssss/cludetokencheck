@@ -133,7 +133,8 @@ class TestHTMLTemplate(unittest.TestCase):
         self.assertIn("</html>", HTML_TEMPLATE)
 
     def test_template_has_clude_branding(self):
-        self.assertIn("Clude Token Check", HTML_TEMPLATE)
+        self.assertIn("Token Check", HTML_TEMPLATE)
+        self.assertIn("powered by", HTML_TEMPLATE)
         self.assertIn("Native Claude Code", HTML_TEMPLATE)
         self.assertIn("#2244FF", HTML_TEMPLATE)
 
