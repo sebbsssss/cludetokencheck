@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/sebbsssss/cludebot/main/assets/clude-icon.svg" alt="Clude" width="80" height="80">
+<img src="assets/clude-icon.svg" alt="Clude" width="80" height="80">
 
 <h1>Token Check</h1>
 
