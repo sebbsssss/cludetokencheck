@@ -2,9 +2,9 @@
 
 <img src="https://raw.githubusercontent.com/sebbsssss/cludebot/main/assets/clude-icon.svg" alt="Clude" width="80" height="80">
 
-<h1>Clude Token Check</h1>
+<h1>Token Check</h1>
 
-<strong>Track your Claude Code token usage and see what Clude saves you.</strong>
+<strong>See exactly what Claude Code costs you — and how much Clude saves.</strong>
 
 <br>
 
@@ -16,117 +16,112 @@
 
 ---
 
-A local dashboard that parses your Claude Code session transcripts and shows detailed token usage, costs, and **estimated savings from [Clude](https://github.com/sebbsssss/cludebot)'s cognitive memory system**.
+## What is this?
 
-Built on top of the Claude Code usage tracking concept, enhanced with Clude's efficiency dimension — so you can see not just what you're spending, but what you *could* save with intelligent memory.
+A local dashboard that reads your Claude Code session files and shows you:
 
-## Features
+1. **How many tokens you're using** — broken down by model, day, and project
+2. **How much it costs** — calculated from real Anthropic API pricing
+3. **How much Clude saves you** — by comparing sessions with and without [Clude](https://github.com/sebbsssss/cludebot) memory
 
-- **Token Usage Dashboard** — Input, output, cache read, cache creation tokens with daily charts
-- **Cost Estimation** — Real Anthropic API pricing (April 2026) across all Claude models
-- **Clude Savings Layer** — Estimated token and cost savings from Clude's memory system
-  - Memory Recall Savings (progressive disclosure)
-  - Compaction Savings (dream cycle compression)
-  - Cache Efficiency Boost (hybrid scoring optimization)
-- **Configurable Efficiency Factors** — Adjust savings estimates via dashboard sliders or env vars
-- **Model & Time Range Filters** — Filter by model, 7d/30d/90d/all time ranges
-- **Per-Session Breakdown** — See savings for every coding session
-- **CLI Reports** — Terminal-based usage summaries with Clude savings
-- **Incremental Scanning** — Only processes new or modified transcript files
-- **Zero Dependencies** — Pure Python standard library, nothing to install
+Everything runs locally. Your data never leaves your machine.
 
 ## Quick Start
 
 ```bash
-# Clone the repo
 git clone https://github.com/sebbsssss/cludetokencheck.git
 cd cludetokencheck
-
-# Launch the dashboard (scans + opens browser)
 python cli.py dashboard
 ```
 
-That's it. No pip install, no virtualenv, no build step.
+That's it. No pip install. No dependencies. Just Python 3.8+.
 
-## Usage
+Your browser opens to `localhost:8080` with your full usage dashboard.
+
+## What You'll See
+
+### Default View — Your Claude Code Usage
+
+- **Summary cards** — total sessions, turns, tokens, and estimated cost
+- **Daily token chart** — stacked bars showing input, output, and cache usage over time
+- **Model breakdown** — which Claude models you're using most
+- **Top projects** — ranked by token consumption
+- **Session table** — every session with model, duration, tokens, and cost
+- **Cost by model** — how much each model is costing you
+
+### Toggle "Clude Savings" — See the Difference
+
+Flip the toggle in the top bar to reveal:
+
+- **Savings hero** — total dollars saved, tokens saved, and % cheaper per session
+- **Why it's cheaper** — three clear reasons with your real numbers:
+  - Sessions finish faster (fewer turns needed)
+  - Smarter model usage (memory lets cheaper models do more)
+  - Less repeated context (memory replaces re-reading cached data)
+- **Side-by-side comparison** — Native Claude Code vs With Clude stats
+- **Tokens per turn chart** — bar chart comparing both modes
+- **Session distribution** — how many sessions used Clude vs didn't
+
+### How Savings Are Calculated
+
+No estimates. No projections. **Real measured data.**
+
+The scanner detects when [Clude](https://github.com/sebbsssss/cludebot)'s memory tools (`store_memory`, `recall_memories`, etc.) appear in your session transcripts. Sessions with these tools are tagged "With Clude" — everything else is "Native."
+
+Then it's simple math:
+- Your Clude sessions averaged **$X per session**
+- Your Native sessions averaged **$Y per session**
+- If those Clude sessions had run at Native rates, you'd have spent **$Z more**
+
+That difference is your real savings.
+
+## CLI Commands
 
 ```bash
-# Scan transcript files and update the database
-python cli.py scan
-
-# Show today's usage with Clude savings estimate
-python cli.py today
-
-# Show all-time statistics with Clude savings
-python cli.py stats
-
-# Launch the web dashboard
-python cli.py dashboard
-
-# Scan a custom projects directory
-python cli.py dashboard --projects-dir /path/to/projects
+python cli.py scan                          # Scan transcripts, update database
+python cli.py today                         # Today's usage (terminal)
+python cli.py stats                         # All-time stats (terminal)
+python cli.py dashboard                     # Launch web dashboard
+python cli.py dashboard --projects-dir PATH # Custom transcript location
 ```
-
-## Clude Savings Model
-
-The dashboard estimates how much you'd save using [Clude](https://github.com/sebbsssss/cludebot)'s cognitive memory system. Three efficiency factors are applied to your actual usage data:
-
-| Factor | Default | What It Models |
-|--------|---------|---------------|
-| **Memory Recall** | 40% | Progressive disclosure — `recallSummaries()` + `hydrate()` reduces context tokens |
-| **Compaction** | 25% | Dream cycle compression — old memories consolidated into compact summaries |
-| **Cache Efficiency** | 15% | Hybrid scoring — better retrieval means fewer wasted tokens on irrelevant context |
-
-### Adjusting Factors
-
-**Via the dashboard:** Click "Settings" in the filter bar and use the sliders.
-
-**Via environment variables:**
-
-```bash
-CLUDE_MEMORY_SAVINGS=0.40 CLUDE_COMPACTION_SAVINGS=0.25 CLUDE_CACHE_EFFICIENCY=0.15 python cli.py dashboard
-```
-
-Set these based on your observed savings when using Clude in production.
 
 ## How It Works
 
-1. **Scans** Claude Code's JSONL transcript files from `~/.claude/projects/`
-2. **Stores** session and turn data in a local SQLite database (`~/.claude/usage.db`)
-3. **Serves** an interactive dashboard on `localhost:8080`
-4. **Calculates** estimated Clude savings based on your configurable efficiency factors
+```
+~/.claude/projects/**/*.jsonl     Claude Code writes these automatically
+         │
+         ▼
+    scanner.py                    Parses JSONL, detects Clude tools, stores in SQLite
+         │
+         ▼
+    ~/.claude/usage.db            Local database (sessions, turns, Clude flags)
+         │
+         ▼
+    dashboard.py                  Serves interactive dashboard on localhost:8080
+```
 
-## Dashboard Sections
-
-- **Clude Savings Banner** — Total tokens saved, cost saved, and efficiency percentage
-- **Summary Stats** — Sessions, turns, token counts, and estimated cost
-- **Daily Token Usage** — Stacked bar chart with Clude savings overlay
-- **By Model** — Doughnut chart of token distribution
-- **Clude Impact** — Visual comparison of actual vs. with-Clude usage
-- **Savings Breakdown** — Per-factor contribution (memory, compaction, cache)
-- **Top Projects** — Horizontal bar chart ranked by token usage
-- **Recent Sessions** — Table with per-session Clude savings column
-- **Cost by Model** — Aggregated costs with "With Clude" comparison column
+- **Incremental** — only processes new or changed files
+- **Zero dependencies** — pure Python standard library
+- **Auto-refresh** — dashboard updates every 30 seconds
 
 ## Configuration
 
-| Environment Variable | Default | Description |
-|---------------------|---------|-------------|
-| `HOST` | `localhost` | Dashboard server host |
-| `PORT` | `8080` | Dashboard server port |
-| `CLUDE_MEMORY_SAVINGS` | `0.40` | Memory recall savings factor (0-1) |
-| `CLUDE_COMPACTION_SAVINGS` | `0.25` | Compaction savings factor (0-1) |
-| `CLUDE_CACHE_EFFICIENCY` | `0.15` | Cache efficiency factor (0-1) |
+| Variable | Default | What it does |
+|----------|---------|-------------|
+| `HOST` | `localhost` | Server address |
+| `PORT` | `8080` | Server port |
 
-## Running Tests
+## Tests
 
 ```bash
-python -m pytest tests/ -v
+python -m unittest discover -s tests -v
 ```
+
+72 tests covering pricing, scanning, parsing, database operations, HTTP endpoints, and template validation.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
 
 ---
 
