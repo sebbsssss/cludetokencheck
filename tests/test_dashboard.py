@@ -54,17 +54,7 @@ class TestGetDashboardData(unittest.TestCase):
         self.assertIn("daily_by_model", data)
         self.assertIn("sessions_all", data)
         self.assertIn("generated_at", data)
-        self.assertIn("clude_factors", data)
-
-    def test_clude_factors_present(self):
-        data = get_dashboard_data(db_path=self.db_path)
-        factors = data["clude_factors"]
-        self.assertIn("memory_recall", factors)
-        self.assertIn("compaction", factors)
-        self.assertIn("cache", factors)
-        self.assertGreater(factors["memory_recall"], 0)
-        self.assertGreater(factors["compaction"], 0)
-        self.assertGreater(factors["cache"], 0)
+        self.assertIn("daily_by_clude", data)
 
     def test_models_populated(self):
         data = get_dashboard_data(db_path=self.db_path)
@@ -144,7 +134,7 @@ class TestHTMLTemplate(unittest.TestCase):
 
     def test_template_has_clude_branding(self):
         self.assertIn("Clude Token Check", HTML_TEMPLATE)
-        self.assertIn("Clude Memory Savings", HTML_TEMPLATE)
+        self.assertIn("Native Claude Code", HTML_TEMPLATE)
         self.assertIn("#2244FF", HTML_TEMPLATE)
 
     def test_template_has_esc_function(self):
@@ -161,8 +151,11 @@ class TestHTMLTemplate(unittest.TestCase):
     def test_unknown_models_return_null(self):
         self.assertIn("return null;", HTML_TEMPLATE)
 
-    def test_template_has_savings_calculation(self):
-        self.assertIn("calcCludeSavings", HTML_TEMPLATE)
+    def test_template_has_native_vs_clude(self):
+        self.assertIn("Native Claude Code", HTML_TEMPLATE)
+        self.assertIn("With Clude", HTML_TEMPLATE)
+        self.assertIn("badge-native", HTML_TEMPLATE)
+        self.assertIn("badge-clude", HTML_TEMPLATE)
 
     def test_template_has_seb_attribution(self):
         self.assertIn("Seb", HTML_TEMPLATE)

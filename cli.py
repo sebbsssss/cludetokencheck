@@ -3,8 +3,8 @@ cli.py - Command-line interface for Clude Token Check.
 
 Commands:
   scan      - Scan JSONL files and update the database
-  today     - Print today's usage summary with Clude savings estimate
-  stats     - Print all-time usage statistics with Clude savings
+  today     - Print today's usage summary (Native vs Clude)
+  stats     - Print all-time statistics (Native vs Clude)
   dashboard - Scan + open browser + start dashboard server
 """
 
@@ -24,11 +24,6 @@ PRICING = {
     "claude-haiku-4-5":  {"input":  1.00, "output":  5.00},
     "claude-haiku-4-6":  {"input":  1.00, "output":  5.00},
 }
-
-# Clude efficiency factors (configurable via env vars)
-CLUDE_MEMORY_RECALL_SAVINGS = float(os.environ.get("CLUDE_MEMORY_SAVINGS", "0.40"))
-CLUDE_COMPACTION_SAVINGS = float(os.environ.get("CLUDE_COMPACTION_SAVINGS", "0.25"))
-CLUDE_CACHE_EFFICIENCY = float(os.environ.get("CLUDE_CACHE_EFFICIENCY", "0.15"))
 
 
 def get_pricing(model):
@@ -59,14 +54,6 @@ def calc_cost(model, inp, out, cache_read, cache_creation):
         cache_read   * p["input"]  * 0.10 / 1_000_000 +
         cache_creation * p["input"] * 1.25 / 1_000_000
     )
-
-
-def calc_clude_savings(inp, out, cache_read):
-    """Estimate token savings from Clude's memory system."""
-    input_saved = inp * CLUDE_MEMORY_RECALL_SAVINGS
-    output_saved = out * CLUDE_COMPACTION_SAVINGS
-    cache_saved = cache_read * CLUDE_CACHE_EFFICIENCY
-    return int(input_saved + output_saved + cache_saved)
 
 
 def fmt(n):
@@ -154,13 +141,46 @@ def cmd_today():
     print(f"  Cache read:       {fmt(total_cr)}")
     print(f"  Cache creation:   {fmt(total_cc)}")
 
-    # Clude savings estimate
-    tokens_saved = calc_clude_savings(total_inp, total_out, total_cr)
-    savings_pct = (tokens_saved / max(total_inp + total_out + total_cr, 1)) * 100
-    hr()
-    print(f"  \033[34mClude Savings Estimate:\033[0m")
-    print(f"    Tokens saved:   ~{fmt(tokens_saved)}")
-    print(f"    Efficiency:     ~{savings_pct:.1f}% reduction")
+    # Native vs Clude comparison
+    try:
+        clude_data = conn.execute("""
+            SELECT
+                s.clude_active,
+                COUNT(DISTINCT t.session_id) as sessions,
+                SUM(t.input_tokens + t.output_tokens) as total_tokens,
+                COUNT(*) as turns
+            FROM turns t
+            JOIN sessions s ON t.session_id = s.session_id
+            WHERE substr(t.timestamp, 1, 10) = ?
+            GROUP BY s.clude_active
+        """, (today,)).fetchall()
+
+        native_tpt = clude_tpt = 0
+        for r in clude_data:
+            tpt = (r["total_tokens"] or 0) // max(r["turns"], 1)
+            if r["clude_active"]:
+                clude_tpt = tpt
+                clude_sessions = r["sessions"]
+            else:
+                native_tpt = tpt
+                native_sessions = r["sessions"]
+
+        if clude_tpt > 0 or native_tpt > 0:
+            hr()
+            print(f"  \033[34mNative vs Clude (today):\033[0m")
+            if native_tpt > 0:
+                print(f"    Native:   {fmt(native_tpt)} tokens/turn")
+            if clude_tpt > 0:
+                print(f"    Clude:    {fmt(clude_tpt)} tokens/turn")
+            if native_tpt > 0 and clude_tpt > 0:
+                diff = ((native_tpt - clude_tpt) / native_tpt) * 100
+                if diff > 0:
+                    print(f"    Delta:    {diff:.1f}% fewer tokens/turn with Clude")
+                else:
+                    print(f"    Delta:    {abs(diff):.1f}% more tokens/turn with Clude")
+    except sqlite3.OperationalError:
+        pass
+
     hr("=")
     print()
     conn.close()
@@ -269,20 +289,53 @@ def cmd_stats():
         print(f"    Input:   {fmt(int(daily_avg['avg_inp'] or 0))}")
         print(f"    Output:  {fmt(int(daily_avg['avg_out'] or 0))}")
 
-    # Clude savings
-    total_inp = totals['inp'] or 0
-    total_out = totals['out'] or 0
-    total_cr = totals['cr'] or 0
-    tokens_saved = calc_clude_savings(total_inp, total_out, total_cr)
-    savings_pct = (tokens_saved / max(total_inp + total_out + total_cr, 1)) * 100
+    # Native vs Clude comparison (real data)
+    try:
+        comparison = conn.execute("""
+            SELECT
+                clude_active,
+                COUNT(*)                   as sessions,
+                SUM(total_input_tokens + total_output_tokens) as total_tokens,
+                SUM(turn_count)            as turns,
+                SUM(total_input_tokens)    as inp,
+                SUM(total_output_tokens)   as out,
+                SUM(total_cache_read)      as cr,
+                SUM(total_cache_creation)  as cc
+            FROM sessions
+            GROUP BY clude_active
+        """).fetchall()
 
-    hr()
-    print(f"  \033[34mClude Savings Estimate (All-Time):\033[0m")
-    print(f"    Tokens saved:       ~{fmt(tokens_saved)}")
-    print(f"    Efficiency gain:    ~{savings_pct:.1f}% reduction")
-    print(f"    Memory recall:      {CLUDE_MEMORY_RECALL_SAVINGS*100:.0f}% input reduction")
-    print(f"    Compaction:         {CLUDE_COMPACTION_SAVINGS*100:.0f}% output reduction")
-    print(f"    Cache efficiency:   {CLUDE_CACHE_EFFICIENCY*100:.0f}% cache optimization")
+        hr()
+        print(f"  \033[34mNative Claude Code vs With Clude (All-Time):\033[0m")
+        native_tpt = clude_tpt = 0
+        for r in comparison:
+            label = "With Clude" if r["clude_active"] else "Native"
+            tpt = (r["total_tokens"] or 0) // max(r["turns"] or 1, 1)
+            cost = sum(
+                calc_cost(m["model"], m["inp"] or 0, m["out"] or 0, m["cr"] or 0, m["cc"] or 0)
+                for m in by_model
+            ) if False else calc_cost(
+                "claude-sonnet-4-6",  # approximate for aggregate
+                r["inp"] or 0, r["out"] or 0, r["cr"] or 0, r["cc"] or 0
+            )
+            avg_cost = cost / max(r["sessions"] or 1, 1)
+            print(f"    {label:<14}  sessions={r['sessions']:<5}  turns={fmt(r['turns'] or 0):<8}  "
+                  f"tokens/turn={fmt(tpt):<8}  avg cost/session={fmt_cost(avg_cost)}")
+            if r["clude_active"]:
+                clude_tpt = tpt
+            else:
+                native_tpt = tpt
+
+        if native_tpt > 0 and clude_tpt > 0:
+            diff = ((native_tpt - clude_tpt) / native_tpt) * 100
+            if diff > 0:
+                print(f"    \033[32m=> {diff:.1f}% fewer tokens/turn with Clude\033[0m")
+            elif diff < 0:
+                print(f"    => {abs(diff):.1f}% more tokens/turn with Clude")
+            else:
+                print(f"    => Same tokens/turn")
+    except sqlite3.OperationalError:
+        pass
 
     hr("=")
     print()
@@ -315,18 +368,16 @@ def cmd_dashboard(projects_dir=None):
 # -- Entry point ---------------------------------------------------------------
 
 USAGE = """
-Clude Token Check - Track your Claude Code usage and see what Clude saves you.
+Clude Token Check - Track your Claude Code usage. See real savings with Clude.
 
 Usage:
   python cli.py scan [--projects-dir PATH]   Scan JSONL files and update database
-  python cli.py today                        Show today's usage with Clude savings
-  python cli.py stats                        Show all-time stats with Clude savings
+  python cli.py today                        Show today's usage (Native vs Clude)
+  python cli.py stats                        Show all-time stats (Native vs Clude)
   python cli.py dashboard [--projects-dir PATH]  Scan + start dashboard
 
-Environment variables for Clude efficiency factors:
-  CLUDE_MEMORY_SAVINGS      Memory recall savings (default: 0.40)
-  CLUDE_COMPACTION_SAVINGS  Compaction savings (default: 0.25)
-  CLUDE_CACHE_EFFICIENCY    Cache efficiency boost (default: 0.15)
+Sessions are classified as "With Clude" when Clude memory MCP tools
+(recall_memories, store_memory, etc.) are detected in the transcript.
 """
 
 COMMANDS = {

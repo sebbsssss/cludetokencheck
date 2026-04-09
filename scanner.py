@@ -16,6 +16,25 @@ XCODE_PROJECTS_DIR = Path.home() / "Library" / "Developer" / "Xcode" / "CodingAs
 DB_PATH = Path.home() / ".claude" / "usage.db"
 DEFAULT_PROJECTS_DIRS = [PROJECTS_DIR, XCODE_PROJECTS_DIR]
 
+# Clude MCP tool name patterns — used to detect Clude-active sessions
+CLUDE_TOOL_PREFIXES = ("mcp__clude-memory__", "mcp__clude__")
+CLUDE_TOOL_NAMES = {
+    "mcp__clude-memory__store_memory",
+    "mcp__clude-memory__recall_memories",
+    "mcp__clude-memory__get_memory_stats",
+    "mcp__clude-memory__find_clinamen",
+    "mcp__clude-memory__batch_store_memories",
+}
+
+
+def is_clude_tool(tool_name):
+    """Check if a tool name belongs to Clude's MCP server."""
+    if not tool_name:
+        return False
+    if tool_name in CLUDE_TOOL_NAMES:
+        return True
+    return any(tool_name.startswith(p) for p in CLUDE_TOOL_PREFIXES)
+
 
 def get_db(db_path=DB_PATH):
     conn = sqlite3.connect(db_path)
@@ -36,7 +55,9 @@ def init_db(conn):
             total_cache_read        INTEGER DEFAULT 0,
             total_cache_creation    INTEGER DEFAULT 0,
             model           TEXT,
-            turn_count      INTEGER DEFAULT 0
+            turn_count      INTEGER DEFAULT 0,
+            clude_active    INTEGER DEFAULT 0,
+            clude_tool_calls INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS turns (
@@ -49,7 +70,8 @@ def init_db(conn):
             cache_read_tokens       INTEGER DEFAULT 0,
             cache_creation_tokens   INTEGER DEFAULT 0,
             tool_name               TEXT,
-            cwd                     TEXT
+            cwd                     TEXT,
+            is_clude_tool           INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS processed_files (
@@ -62,6 +84,19 @@ def init_db(conn):
         CREATE INDEX IF NOT EXISTS idx_turns_timestamp ON turns(timestamp);
         CREATE INDEX IF NOT EXISTS idx_sessions_first ON sessions(first_timestamp);
     """)
+    # Migration: add columns if upgrading from older schema
+    try:
+        conn.execute("ALTER TABLE sessions ADD COLUMN clude_active INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE sessions ADD COLUMN clude_tool_calls INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE turns ADD COLUMN is_clude_tool INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
 
 
@@ -135,10 +170,14 @@ def parse_jsonl_file(filepath):
                         continue
 
                     tool_name = None
+                    clude_tool_found = False
                     for item in msg.get("content", []):
                         if isinstance(item, dict) and item.get("type") == "tool_use":
-                            tool_name = item.get("name")
-                            break
+                            name = item.get("name")
+                            if tool_name is None:
+                                tool_name = name
+                            if is_clude_tool(name):
+                                clude_tool_found = True
 
                     if model:
                         session_meta[session_id]["model"] = model
@@ -153,6 +192,7 @@ def parse_jsonl_file(filepath):
                         "cache_creation_tokens": cache_creation,
                         "tool_name": tool_name,
                         "cwd": cwd,
+                        "is_clude_tool": 1 if clude_tool_found else 0,
                     })
 
     except Exception as e:
@@ -172,6 +212,8 @@ def aggregate_sessions(session_metas, turns):
         "total_cache_creation": 0,
         "turn_count": 0,
         "model": None,
+        "clude_active": 0,
+        "clude_tool_calls": 0,
     })
 
     for t in turns:
@@ -183,6 +225,9 @@ def aggregate_sessions(session_metas, turns):
         s["turn_count"] += 1
         if t["model"]:
             s["model"] = t["model"]
+        if t.get("is_clude_tool"):
+            s["clude_active"] = 1
+            s["clude_tool_calls"] += 1
 
     result = []
     for meta in session_metas:
@@ -205,14 +250,16 @@ def upsert_sessions(conn, sessions):
                 INSERT INTO sessions
                     (session_id, project_name, first_timestamp, last_timestamp,
                      git_branch, total_input_tokens, total_output_tokens,
-                     total_cache_read, total_cache_creation, model, turn_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     total_cache_read, total_cache_creation, model, turn_count,
+                     clude_active, clude_tool_calls)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 s["session_id"], s["project_name"], s["first_timestamp"],
                 s["last_timestamp"], s["git_branch"],
                 s["total_input_tokens"], s["total_output_tokens"],
                 s["total_cache_read"], s["total_cache_creation"],
-                s["model"], s["turn_count"]
+                s["model"], s["turn_count"],
+                s.get("clude_active", 0), s.get("clude_tool_calls", 0)
             ))
         else:
             conn.execute("""
@@ -223,13 +270,16 @@ def upsert_sessions(conn, sessions):
                     total_cache_read = total_cache_read + ?,
                     total_cache_creation = total_cache_creation + ?,
                     turn_count = turn_count + ?,
-                    model = COALESCE(?, model)
+                    model = COALESCE(?, model),
+                    clude_active = MAX(clude_active, ?),
+                    clude_tool_calls = clude_tool_calls + ?
                 WHERE session_id = ?
             """, (
                 s["last_timestamp"],
                 s["total_input_tokens"], s["total_output_tokens"],
                 s["total_cache_read"], s["total_cache_creation"],
                 s["turn_count"], s["model"],
+                s.get("clude_active", 0), s.get("clude_tool_calls", 0),
                 s["session_id"]
             ))
 
@@ -238,13 +288,13 @@ def insert_turns(conn, turns):
     conn.executemany("""
         INSERT INTO turns
             (session_id, timestamp, model, input_tokens, output_tokens,
-             cache_read_tokens, cache_creation_tokens, tool_name, cwd)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             cache_read_tokens, cache_creation_tokens, tool_name, cwd, is_clude_tool)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, [
         (t["session_id"], t["timestamp"], t["model"],
          t["input_tokens"], t["output_tokens"],
          t["cache_read_tokens"], t["cache_creation_tokens"],
-         t["tool_name"], t["cwd"])
+         t["tool_name"], t["cwd"], t.get("is_clude_tool", 0))
         for t in turns
     ])
 
@@ -345,10 +395,14 @@ def scan(projects_dir=None, projects_dirs=None, db_path=DB_PATH, verbose=True):
                                 continue
 
                             tool_name = None
+                            clude_tool_found = False
                             for item in msg.get("content", []):
                                 if isinstance(item, dict) and item.get("type") == "tool_use":
-                                    tool_name = item.get("name")
-                                    break
+                                    name = item.get("name")
+                                    if tool_name is None:
+                                        tool_name = name
+                                    if is_clude_tool(name):
+                                        clude_tool_found = True
 
                             new_turns.append({
                                 "session_id": session_id,
@@ -360,6 +414,7 @@ def scan(projects_dir=None, projects_dirs=None, db_path=DB_PATH, verbose=True):
                                 "cache_creation_tokens": cache_creation,
                                 "tool_name": tool_name,
                                 "cwd": record.get("cwd", ""),
+                                "is_clude_tool": 1 if clude_tool_found else 0,
                             })
                 except Exception as e:
                     print(f"  Warning: {e}")

@@ -1,7 +1,7 @@
-"""Tests for cli.py - pricing, formatting, cost calculation, and Clude savings."""
+"""Tests for cli.py - pricing, formatting, and cost calculation."""
 
 import unittest
-from cli import get_pricing, calc_cost, calc_clude_savings, fmt, fmt_cost, PRICING
+from cli import get_pricing, calc_cost, fmt, fmt_cost, PRICING
 
 
 class TestGetPricing(unittest.TestCase):
@@ -95,29 +95,6 @@ class TestCalcCost(unittest.TestCase):
     def test_unknown_model_costs_zero(self):
         cost = calc_cost("glm-5.1", 1_000_000, 500_000, 100_000, 50_000)
         self.assertEqual(cost, 0.0)
-
-
-class TestCludeSavings(unittest.TestCase):
-    def test_savings_calculation(self):
-        saved = calc_clude_savings(1_000_000, 500_000, 200_000)
-        # 1M * 0.40 + 500K * 0.25 + 200K * 0.15 = 400K + 125K + 30K = 555K
-        self.assertEqual(saved, 555_000)
-
-    def test_zero_tokens_zero_savings(self):
-        saved = calc_clude_savings(0, 0, 0)
-        self.assertEqual(saved, 0)
-
-    def test_input_only_savings(self):
-        saved = calc_clude_savings(1_000_000, 0, 0)
-        self.assertEqual(saved, 400_000)
-
-    def test_output_only_savings(self):
-        saved = calc_clude_savings(0, 1_000_000, 0)
-        self.assertEqual(saved, 250_000)
-
-    def test_cache_only_savings(self):
-        saved = calc_clude_savings(0, 0, 1_000_000)
-        self.assertEqual(saved, 150_000)
 
 
 class TestFmt(unittest.TestCase):
