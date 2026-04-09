@@ -145,7 +145,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clude Token Check</title>
+<title>Token Check — powered by Clude</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@400;600;700&family=Inconsolata:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -185,6 +185,22 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .model-cb-label input { display: none; }
   .filter-btn { padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; white-space: nowrap; font-family: 'Inconsolata', monospace; }
   .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Clude toggle */
+  .clude-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .clude-toggle-label { font-size: 12px; font-weight: 600; color: var(--muted); font-family: 'Inconsolata', monospace; transition: color 0.2s; }
+  .clude-toggle-label.active { color: var(--accent); }
+  .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: var(--border); position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .toggle-track.on { background: var(--accent); }
+  .toggle-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--text); position: absolute; top: 2px; left: 2px; transition: transform 0.2s; }
+  .toggle-track.on .toggle-thumb { transform: translateX(16px); }
+
+  /* Clude sections hidden by default */
+  .clude-section { display: none !important; }
+  .clude-section.visible { display: block !important; }
+  .clude-section.visible.comparison-banner { display: grid !important; }
+  .clude-section.visible.chart-card { display: block !important; }
+
   .range-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
   .range-btn { padding: 4px 13px; background: transparent; border: none; border-right: 1px solid var(--border); color: var(--muted); font-size: 12px; cursor: pointer; transition: background 0.15s, color 0.15s; font-family: 'Inconsolata', monospace; }
   .range-btn:last-child { border-right: none; }
@@ -193,22 +209,41 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
   .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
 
+  /* Savings hero */
+  .savings-hero { background: linear-gradient(135deg, rgba(34,68,255,0.08) 0%, rgba(74,222,128,0.06) 100%); border: 1px solid rgba(34,68,255,0.2); border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  .savings-hero-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
+  .savings-hero-title { font-size: 14px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; font-family: 'Inconsolata', monospace; }
+  .savings-big { display: flex; gap: 40px; flex-wrap: wrap; }
+  .savings-big-item { text-align: center; }
+  .savings-big-item .big-val { font-size: 36px; font-weight: 700; font-family: 'Inconsolata', monospace; line-height: 1.1; }
+  .savings-big-item .big-val.green { color: var(--green); }
+  .savings-big-item .big-val.accent { color: var(--accent); }
+  .savings-big-item .big-label { font-size: 12px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .savings-why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+  .why-card { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px; }
+  .why-card .why-icon { font-size: 20px; margin-bottom: 8px; }
+  .why-card .why-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .why-card .why-body { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .why-card .why-num { font-family: 'Inconsolata', monospace; font-weight: 700; }
+  .why-card .why-num.native-c { color: var(--native); }
+  .why-card .why-num.clude-c { color: var(--accent); }
+  .why-card .why-num.green-c { color: var(--green); }
+
   /* Comparison banner */
-  .comparison-banner { display: grid; grid-template-columns: 1fr 80px 1fr; gap: 0; margin-bottom: 24px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
-  .comp-side { padding: 20px 24px; }
+  .comparison-banner { display: grid; grid-template-columns: 1fr 50px 1fr; gap: 0; margin-bottom: 24px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .comp-side { padding: 18px 20px; }
   .comp-native { background: var(--native-bg); border-right: 1px solid var(--border); }
   .comp-clude { background: var(--clude-bg); border-left: 1px solid var(--border); }
-  .comp-vs { display: flex; align-items: center; justify-content: center; background: var(--card); font-size: 12px; font-weight: 700; color: var(--muted); font-family: 'Inconsolata', monospace; }
-  .comp-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; font-family: 'Inconsolata', monospace; }
+  .comp-vs { display: flex; align-items: center; justify-content: center; background: var(--card); font-size: 11px; font-weight: 700; color: var(--muted); font-family: 'Inconsolata', monospace; }
+  .comp-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; font-family: 'Inconsolata', monospace; }
   .comp-native .comp-label { color: var(--native); }
   .comp-clude .comp-label { color: var(--clude); }
-  .comp-stats { display: flex; gap: 24px; flex-wrap: wrap; }
-  .comp-stat .cv { font-size: 20px; font-weight: 700; font-family: 'Inconsolata', monospace; }
-  .comp-stat .cl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  .comp-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+  .comp-stat .cv { font-size: 18px; font-weight: 700; font-family: 'Inconsolata', monospace; }
+  .comp-stat .cl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
   .comp-native .cv { color: var(--native); }
   .comp-clude .cv { color: var(--clude); }
-  .comp-delta { margin-top: 10px; font-size: 12px; color: var(--green); font-family: 'Inconsolata', monospace; font-weight: 600; }
-  .comp-delta.neutral { color: var(--muted); }
 
   .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
   .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
@@ -252,6 +287,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .comp-vs { padding: 8px; }
     .comp-native { border-right: none; border-bottom: 1px solid var(--border); }
     .comp-clude { border-left: none; border-top: 1px solid var(--border); }
+    .savings-why { grid-template-columns: 1fr; }
+    .savings-big { gap: 24px; }
+    .savings-big-item .big-val { font-size: 28px; }
   }
 </style>
 </head>
@@ -261,7 +299,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <svg class="header-logo" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
       <path fill="#2244FF" d="M877.5,295.97V109.03c0-10.51-8.52-19.03-19.03-19.03h-430.97c-10.51,0-19.03,8.52-19.03,19.03v147.53c0,25.23-10.02,49.44-27.87,67.28l-155.81,155.81c-14.28,14.27-22.29,33.64-22.29,53.82v437.5c0,10.51,8.52,19.03,19.03,19.03h636.94c10.51,0,19.03-8.52,19.03-19.03v-186.94c0-10.51-8.52-19.03-19.03-19.03h-421.46c-5.25,0-9.51-4.26-9.51-9.51v-402.43c0-21.02,17.04-38.06,38.06-38.06h392.91c10.51,0,19.03-8.52,19.03-19.03Z"/>
     </svg>
-    <h1><span>Clude</span> Token Check</h1>
+    <h1>Token Check <span style="font-weight:400;color:var(--muted);font-size:14px">powered by</span> <span>Clude</span></h1>
   </div>
   <div class="meta" id="meta">Loading...</div>
 </header>
@@ -279,17 +317,57 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <button class="range-btn" data-range="90d" onclick="setRange('90d')">90d</button>
     <button class="range-btn" data-range="all" onclick="setRange('all')">All</button>
   </div>
+  <div class="filter-sep"></div>
+  <div class="clude-toggle" onclick="toggleClude()">
+    <div class="clude-toggle-label" id="clude-toggle-label">Clude Savings</div>
+    <div class="toggle-track" id="clude-toggle-track"><div class="toggle-thumb"></div></div>
+  </div>
 </div>
 
 <div class="container">
-  <!-- Native vs Clude Comparison Banner -->
-  <div class="comparison-banner" id="comparison-banner">
+  <!-- Savings Hero (hidden until toggle) -->
+  <div class="savings-hero clude-section" id="savings-hero">
+    <div class="savings-hero-top">
+      <div class="savings-hero-title">Savings with Clude</div>
+    </div>
+    <div class="savings-big" id="savings-big">
+      <div class="savings-big-item">
+        <div class="big-val green" id="hero-cost-saved">--</div>
+        <div class="big-label">Cost Saved</div>
+      </div>
+      <div class="savings-big-item">
+        <div class="big-val accent" id="hero-tokens-saved">--</div>
+        <div class="big-label">Tokens Saved</div>
+      </div>
+      <div class="savings-big-item">
+        <div class="big-val green" id="hero-pct-saved">--</div>
+        <div class="big-label">Cheaper per Session</div>
+      </div>
+    </div>
+    <div class="savings-why" id="savings-why">
+      <div class="why-card">
+        <div class="why-title">Shorter Sessions</div>
+        <div class="why-body">Clude's memory means the agent gets context faster and finishes sooner.<br><span class="why-num native-c" id="why-native-turns">--</span> vs <span class="why-num clude-c" id="why-clude-turns">--</span> avg turns/session</div>
+      </div>
+      <div class="why-card">
+        <div class="why-title">Smarter Model Usage</div>
+        <div class="why-body">With memory, Clude can use cheaper models effectively for more tasks.<br>Avg cost/session: <span class="why-num native-c" id="why-native-cps">--</span> vs <span class="why-num clude-c" id="why-clude-cps">--</span></div>
+      </div>
+      <div class="why-card">
+        <div class="why-title">Less Repeated Context</div>
+        <div class="why-body">Memory reduces how much cached context needs to be re-read each turn.<br>Cache/turn: <span class="why-num native-c" id="why-native-cache">--</span> vs <span class="why-num clude-c" id="why-clude-cache">--</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side-by-side comparison (hidden until toggle) -->
+  <div class="comparison-banner clude-section" id="comparison-banner">
     <div class="comp-side comp-native">
       <div class="comp-label">Native Claude Code</div>
       <div class="comp-stats">
         <div class="comp-stat"><div class="cv" id="native-sessions">--</div><div class="cl">Sessions</div></div>
         <div class="comp-stat"><div class="cv" id="native-tokens">--</div><div class="cl">Tokens/Turn</div></div>
-        <div class="comp-stat"><div class="cv" id="native-cost">--</div><div class="cl">Avg Cost/Session</div></div>
+        <div class="comp-stat"><div class="cv" id="native-cost">--</div><div class="cl">Total Cost</div></div>
       </div>
     </div>
     <div class="comp-vs">VS</div>
@@ -298,9 +376,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="comp-stats">
         <div class="comp-stat"><div class="cv" id="clude-sessions">--</div><div class="cl">Sessions</div></div>
         <div class="comp-stat"><div class="cv" id="clude-tokens">--</div><div class="cl">Tokens/Turn</div></div>
-        <div class="comp-stat"><div class="cv" id="clude-cost">--</div><div class="cl">Avg Cost/Session</div></div>
+        <div class="comp-stat"><div class="cv" id="clude-cost">--</div><div class="cl">Total Cost</div></div>
       </div>
-      <div class="comp-delta" id="clude-delta"></div>
     </div>
   </div>
 
@@ -314,7 +391,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <h2>By Model</h2>
       <div class="chart-wrap"><canvas id="chart-model"></canvas></div>
     </div>
-    <div class="chart-card">
+    <div class="chart-card clude-section" id="chart-comparison-card">
       <h2>Native vs Clude — Tokens per Turn</h2>
       <div class="chart-wrap"><canvas id="chart-comparison"></canvas></div>
     </div>
@@ -322,7 +399,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <h2>Top Projects by Tokens</h2>
       <div class="chart-wrap"><canvas id="chart-project"></canvas></div>
     </div>
-    <div class="chart-card">
+    <div class="chart-card clude-section" id="chart-distribution-card">
       <h2>Session Distribution</h2>
       <div class="chart-wrap"><canvas id="chart-distribution"></canvas></div>
     </div>
@@ -332,7 +409,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <table>
       <thead><tr>
         <th>Session</th><th>Project</th><th>Last Active</th><th>Duration</th>
-        <th>Model</th><th>Mode</th><th>Turns</th><th>Input</th><th>Output</th><th>Est. Cost</th>
+        <th>Model</th><th class="mode-col" style="display:none">Mode</th><th>Turns</th><th>Input</th><th>Output</th><th>Est. Cost</th>
       </tr></thead>
       <tbody id="sessions-body"></tbody>
     </table>
@@ -375,6 +452,27 @@ let rawData = null;
 let selectedModels = new Set();
 let selectedRange = '30d';
 let charts = {};
+let cludeMode = false;
+
+// -- Clude toggle -------------------------------------------------------------
+function toggleClude() {
+  cludeMode = !cludeMode;
+  document.getElementById('clude-toggle-track').classList.toggle('on', cludeMode);
+  document.getElementById('clude-toggle-label').classList.toggle('active', cludeMode);
+
+  // Show/hide Clude sections
+  document.querySelectorAll('.clude-section').forEach(el => {
+    el.classList.toggle('visible', cludeMode);
+  });
+
+  // Show/hide Mode column in sessions table
+  document.querySelectorAll('.mode-col').forEach(el => {
+    el.style.display = cludeMode ? '' : 'none';
+  });
+
+  // Re-render charts to fix sizing after show/hide
+  if (rawData) applyFilter();
+}
 
 // -- Pricing (Anthropic API, April 2026) --------------------------------------
 const PRICING = {
@@ -419,13 +517,10 @@ function calcCost(model, inp, out, cacheRead, cacheCreation) {
 
 // -- Formatting ---------------------------------------------------------------
 function fmt(n) {
-  if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
-  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
-  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
-  return n.toLocaleString();
+  return Math.round(n).toLocaleString();
 }
-function fmtCost(c)    { return '$' + c.toFixed(4); }
-function fmtCostBig(c) { return '$' + c.toFixed(2); }
+function fmtCost(c)    { return '$' + c.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4}); }
+function fmtCostBig(c) { return '$' + c.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
 
 // -- Chart colors -------------------------------------------------------------
 const TOKEN_COLORS = {
@@ -603,6 +698,7 @@ function applyFilter() {
 
   document.getElementById('daily-chart-title').textContent = 'Daily Token Usage \u2014 ' + RANGE_LABELS[selectedRange];
 
+  renderSavingsHero(nativeStats, cludeStats);
   renderComparisonBanner(nativeStats, cludeStats);
   renderStats(totals);
   renderDailyChart(daily);
@@ -628,41 +724,59 @@ function computeGroupStats(sessions) {
   return {
     count,
     totalInput, totalOutput, totalCR, totalCC, totalTurns, totalCost,
+    totalTokens: totalInput + totalOutput,
     tokensPerTurn: totalTurns > 0 ? Math.round((totalInput + totalOutput) / totalTurns) : 0,
+    avgTurnsPerSession: count > 0 ? Math.round(totalTurns / count) : 0,
     avgCostPerSession: count > 0 ? totalCost / count : 0,
+    cachePerTurn: totalTurns > 0 ? Math.round(totalCR / totalTurns) : 0,
   };
 }
 
 // -- Renderers ----------------------------------------------------------------
+function renderSavingsHero(native, clude) {
+  // Calculate: "If Clude sessions had cost the same per-session as Native, you'd have spent X more"
+  const wouldHaveSpent = clude.count > 0 && native.avgCostPerSession > 0
+    ? clude.count * native.avgCostPerSession
+    : 0;
+  const actuallySpent = clude.totalCost;
+  const costSaved = Math.max(wouldHaveSpent - actuallySpent, 0);
+
+  const wouldHaveUsedTokens = clude.count > 0 && native.count > 0
+    ? clude.count * (native.totalTokens / native.count)
+    : 0;
+  const tokensSaved = Math.max(Math.round(wouldHaveUsedTokens - clude.totalTokens), 0);
+
+  const pctCheaper = native.avgCostPerSession > 0 && clude.avgCostPerSession > 0
+    ? ((native.avgCostPerSession - clude.avgCostPerSession) / native.avgCostPerSession * 100)
+    : 0;
+
+  // Hero numbers
+  document.getElementById('hero-cost-saved').textContent = costSaved > 0 ? fmtCostBig(costSaved) : '--';
+  document.getElementById('hero-tokens-saved').textContent = tokensSaved > 0 ? fmt(tokensSaved) : '--';
+  document.getElementById('hero-pct-saved').textContent = pctCheaper > 0 ? pctCheaper.toFixed(0) + '%' : '--';
+
+  // Why cards
+  document.getElementById('why-native-turns').textContent = fmt(native.avgTurnsPerSession);
+  document.getElementById('why-clude-turns').textContent = fmt(clude.avgTurnsPerSession);
+  document.getElementById('why-native-cps').textContent = fmtCostBig(native.avgCostPerSession);
+  document.getElementById('why-clude-cps').textContent = fmtCostBig(clude.avgCostPerSession);
+  document.getElementById('why-native-cache').textContent = fmt(native.cachePerTurn);
+  document.getElementById('why-clude-cache').textContent = fmt(clude.cachePerTurn);
+
+  // Hide hero if no Clude sessions (even when toggle is on)
+  if (cludeMode && clude.count === 0) {
+    document.getElementById('savings-hero').classList.remove('visible');
+  }
+}
+
 function renderComparisonBanner(native, clude) {
   document.getElementById('native-sessions').textContent = native.count.toLocaleString();
   document.getElementById('native-tokens').textContent = fmt(native.tokensPerTurn);
-  document.getElementById('native-cost').textContent = fmtCostBig(native.avgCostPerSession);
+  document.getElementById('native-cost').textContent = fmtCostBig(native.totalCost);
 
   document.getElementById('clude-sessions').textContent = clude.count.toLocaleString();
   document.getElementById('clude-tokens').textContent = fmt(clude.tokensPerTurn);
-  document.getElementById('clude-cost').textContent = fmtCostBig(clude.avgCostPerSession);
-
-  const deltaEl = document.getElementById('clude-delta');
-  if (native.tokensPerTurn > 0 && clude.tokensPerTurn > 0) {
-    const pctDiff = ((native.tokensPerTurn - clude.tokensPerTurn) / native.tokensPerTurn * 100);
-    if (pctDiff > 0) {
-      deltaEl.textContent = `${pctDiff.toFixed(1)}% fewer tokens/turn vs Native`;
-      deltaEl.className = 'comp-delta';
-    } else if (pctDiff < 0) {
-      deltaEl.textContent = `${Math.abs(pctDiff).toFixed(1)}% more tokens/turn vs Native`;
-      deltaEl.className = 'comp-delta neutral';
-    } else {
-      deltaEl.textContent = 'Same tokens/turn as Native';
-      deltaEl.className = 'comp-delta neutral';
-    }
-  } else if (clude.count === 0) {
-    deltaEl.textContent = 'No Clude sessions detected in this range';
-    deltaEl.className = 'comp-delta neutral';
-  } else {
-    deltaEl.textContent = '';
-    deltaEl.className = 'comp-delta neutral';
-  }
+  document.getElementById('clude-cost').textContent = fmtCostBig(clude.totalCost);
 }
 
 function renderStats(t) {
@@ -837,7 +951,7 @@ function renderSessionsTable(sessions) {
       <td class="muted">${esc(s.last)}</td>
       <td class="muted">${esc(s.duration_min)}m</td>
       <td><span class="model-tag">${esc(s.model)}</span></td>
-      <td>${badge}</td>
+      <td class="mode-col" style="${cludeMode ? '' : 'display:none'}">${badge}</td>
       <td class="num">${s.turns}</td>
       <td class="num">${fmt(s.input)}</td>
       <td class="num">${fmt(s.output)}</td>

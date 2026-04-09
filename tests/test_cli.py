@@ -99,12 +99,12 @@ class TestCalcCost(unittest.TestCase):
 
 class TestFmt(unittest.TestCase):
     def test_millions(self):
-        self.assertEqual(fmt(1_500_000), "1.50M")
-        self.assertEqual(fmt(1_000_000), "1.00M")
+        self.assertEqual(fmt(1_500_000), "1,500,000")
+        self.assertEqual(fmt(1_000_000), "1,000,000")
 
     def test_thousands(self):
-        self.assertEqual(fmt(1_500), "1.5K")
-        self.assertEqual(fmt(1_000), "1.0K")
+        self.assertEqual(fmt(1_500), "1,500")
+        self.assertEqual(fmt(1_000), "1,000")
 
     def test_small_numbers(self):
         self.assertEqual(fmt(999), "999")
@@ -116,6 +116,7 @@ class TestFmtCost(unittest.TestCase):
         self.assertEqual(fmt_cost(3.0), "$3.0000")
         self.assertEqual(fmt_cost(0.0001), "$0.0001")
         self.assertEqual(fmt_cost(0), "$0.0000")
+        self.assertEqual(fmt_cost(1234.5678), "$1,234.5678")
 
 
 class TestPricingConsistency(unittest.TestCase):

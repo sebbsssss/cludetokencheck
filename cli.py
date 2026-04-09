@@ -57,15 +57,11 @@ def calc_cost(model, inp, out, cache_read, cache_creation):
 
 
 def fmt(n):
-    if n >= 1_000_000:
-        return f"{n/1_000_000:.2f}M"
-    if n >= 1_000:
-        return f"{n/1_000:.1f}K"
-    return str(n)
+    return f"{n:,.0f}" if isinstance(n, (int, float)) else str(n)
 
 
 def fmt_cost(c):
-    return f"${c:.4f}"
+    return f"${c:,.4f}"
 
 
 def hr(char="-", width=60):
